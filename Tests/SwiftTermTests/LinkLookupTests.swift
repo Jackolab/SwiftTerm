@@ -42,6 +42,16 @@ final class LinkLookupTests: TerminalDelegate {
         #expect(link == "https://example.com")
     }
 
+    @Test func testHyperlinkFilterRefusesATarget() {
+        let terminal = Terminal(delegate: self, options: TerminalOptions(cols: 20, rows: 1))
+        terminal.hyperlinkFilter = { $0.hasPrefix("https:") }
+        terminal.feed(text: "\u{1b}]8;;javascript:x\u{07}no\u{1b}]8;;\u{07} \u{1b}]8;id=1;https://ok.example\u{07}ok\u{1b}]8;;\u{07}")
+
+        #expect(terminal.link(at: .buffer(Position(col: 0, row: 0)), mode: .explicitOnly) == nil)
+        #expect(!terminal.displayBuffer.lines[0][0].hasPayload)
+        #expect(terminal.link(at: .buffer(Position(col: 3, row: 0)), mode: .explicitOnly) == "https://ok.example")
+    }
+
     @Test func testGarbageCollectionDoesNotReleaseAnotherTerminalsPayload() {
         let first = Terminal(delegate: self, options: TerminalOptions(cols: 20, rows: 1))
         let second = Terminal(delegate: self, options: TerminalOptions(cols: 20, rows: 1))

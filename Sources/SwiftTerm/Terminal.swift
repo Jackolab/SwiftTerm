@@ -2661,12 +2661,20 @@ open class Terminal {
         return atom
     }
 
+    /// Asked with each OSC 8 target (the URI after the parameters);
+    /// returning `false` opens no link, so the text is plain text.
+    public var hyperlinkFilter: ((String) -> Bool)? = nil
+
     func oscHyperlink (_ data: ArraySlice<UInt8>)
     {
         if data.count == 1 && data [data.startIndex] == UInt8 (ascii: ";") {
             activeHyperlink = nil
         } else {
             let payload = String(bytes: data, encoding: .ascii) ?? ""
+            if let hyperlinkFilter, !hyperlinkFilter(parseHyperlinkPayload(payload) ?? payload) {
+                activeHyperlink = nil
+                return
+            }
             activeHyperlink = .pending(payload)
         }
     }
