@@ -628,6 +628,9 @@ extension Terminal {
     }
 
     private func loadKittyPayload(control: KittyGraphicsControl, base64Payload: [UInt8]) -> (payload: KittyGraphicsPayload?, errorMessage: String?) {
+        guard control.transmission == "d" || options.kittyLocalTransmissions else {
+            return (nil, "ENOTSUP: unsupported transmission")
+        }
         switch control.transmission {
         case "d":
             guard let payload = decodeKittyPayload(control: control, base64Payload: base64Payload) else {
