@@ -19,15 +19,23 @@ class SixelDcsHandler : DcsHandler {
         data = []
     }
     
+    /// Set when the image is over `imageMaxBytes`; the rest of it is dropped.
+    var refused = false
+
     func hook (collect: cstring, parameters: [Int],  flag: UInt8)
     {
         data = []
+        refused = false
     }
     
     func put (data : ArraySlice<UInt8>) {
-        for x in data {
-            self.data.append(x)
+        guard !refused else { return }
+        guard self.data.count + data.count <= terminal.options.imageMaxBytes else {
+            refused = true
+            self.data = []
+            return
         }
+        self.data.append(contentsOf: data)
     }
     
     private func nextInt(_ p: inout Int) -> Int? {
@@ -40,7 +48,9 @@ class SixelDcsHandler : DcsHandler {
             
             let digit = Int(c) - 48
             if let existing = result {
-                result = 10 * existing + digit
+                let (times, o1) = existing.multipliedReportingOverflow(by: 10)
+                let (sum, o2) = times.addingReportingOverflow(digit)
+                result = o1 || o2 ? Int.max : sum
             } else {
                 result = digit
             }
@@ -80,6 +90,10 @@ class SixelDcsHandler : DcsHandler {
     let poundChar: UInt8 = 0x23 /* # */
     
     func unhook () {
+        if refused {
+            refused = false
+            return
+        }
         var p = 0
         palette = [Int: UInt32]()
         x = 0
@@ -116,10 +130,17 @@ class SixelDcsHandler : DcsHandler {
         // new-line (-).  Include the cursor's final position in that case so
         // the pixel buffer covers the last band that was scanned.
         maxX = max(maxX, x)
-        
+
+        let (area, o1) = maxX.multipliedReportingOverflow(by: maxY)
+        let (byteCount, o2) = area.multipliedReportingOverflow(by: 4)
+        guard maxX > 0, maxY > 0, !o1, !o2, byteCount <= terminal.options.imageMaxBytes else {
+            data = []
+            return
+        }
+
         // Allocate the buffer, and parse again, this time
         // plotting the data into the pixels buffer
-        pixels = Array.init(repeating: 0, count: maxX*maxY*4)
+        pixels = Array.init(repeating: 0, count: byteCount)
         p = skipped
         x = 0
         y = 0
@@ -238,8 +259,11 @@ class SixelDcsHandler : DcsHandler {
                 x = 0
                 
             case 63...126:
-                for _ in 0..<reps {
+                // Sizing needs one write per run: every repeat sets the same rows.
+                if reps > 0 {
                     write(sixel: Int(c) - 63)
+                    let (end, overflow) = x.addingReportingOverflow(reps - 1)
+                    x = overflow ? Int.max : end
                 }
                 // back to not repeating
                 reps = 1

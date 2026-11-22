@@ -95,6 +95,10 @@ public struct TerminalOptions {
     public var enableSixelReported:Bool
     /// Maximum total bytes to keep for kitty image data; defaults to 320MB and is clamped to 4GB.
     public var kittyImageCacheLimitBytes: Int
+    /// Largest single image the terminal accepts, in bytes: a kitty payload or its
+    /// decoded pixels, a sixel bitmap, or an OSC 1337 file and its decoded pixels.
+    /// Larger images are dropped before they are allocated. Defaults to 400MB.
+    public var imageMaxBytes: Int
     /// Strategy used to derive the 256-color palette from the base 16 colors.
     public var ansi256PaletteStrategy: Ansi256PaletteStrategy
     /// Width for individual Regional Indicator symbols. `.wide` (default) preserves existing
@@ -119,6 +123,7 @@ public struct TerminalOptions {
                                                        tabStopWidth: 8,
                                                        enableSixelReported: true,
                                                        kittyImageCacheLimitBytes: 320 * 1024 * 1024,
+                                                       imageMaxBytes: 400 * 1024 * 1024,
                                                        ansi256PaletteStrategy: .base16Lab,
                                                        regionalIndicatorWidth: .wide,
                                                        initialBidiState: .default,
@@ -126,7 +131,7 @@ public struct TerminalOptions {
                                                        initialBidiArrowKeySwap: false)
 
   public init(cols: Int = Self.default.cols, rows: Int = Self.default.rows, convertEol: Bool = Self.default.convertEol, termName: String = Self.default.termName, cursorStyle: CursorStyle = Self.default.cursorStyle, screenReaderMode: Bool = Self.default.screenReaderMode, scrollback: Int = Self.default.scrollback, tabStopWidth: Int = Self.default.tabStopWidth,
-              enableSixelReported: Bool = Self.default.enableSixelReported, kittyImageCacheLimitBytes: Int = Self.default.kittyImageCacheLimitBytes, ansi256PaletteStrategy: Ansi256PaletteStrategy = Self.default.ansi256PaletteStrategy,
+              enableSixelReported: Bool = Self.default.enableSixelReported, kittyImageCacheLimitBytes: Int = Self.default.kittyImageCacheLimitBytes, imageMaxBytes: Int = Self.default.imageMaxBytes, ansi256PaletteStrategy: Ansi256PaletteStrategy = Self.default.ansi256PaletteStrategy,
               regionalIndicatorWidth: RegionalIndicatorWidth = Self.default.regionalIndicatorWidth,
               initialBidiState: BidiPresentationState = Self.default.initialBidiState,
               maximumBidiParagraphRows: Int = Self.default.maximumBidiParagraphRows,
@@ -141,6 +146,7 @@ public struct TerminalOptions {
         self.tabStopWidth = tabStopWidth
         self.enableSixelReported = enableSixelReported
         self.kittyImageCacheLimitBytes = kittyImageCacheLimitBytes
+        self.imageMaxBytes = imageMaxBytes
         self.ansi256PaletteStrategy = ansi256PaletteStrategy
         self.regionalIndicatorWidth = regionalIndicatorWidth
         self.initialBidiState = initialBidiState

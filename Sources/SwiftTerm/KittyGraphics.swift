@@ -146,7 +146,7 @@ final class KittyGraphicsState {
 }
 
 extension Terminal {
-    private static let kittyMaxImageBytes = 400 * 1024 * 1024
+    private var kittyMaxImageBytes: Int { max(0, options.imageMaxBytes) }
     private static let kittyMaxImageDimension = 10000
     private static let kittyMaxImageCacheBytes = 4 * 1024 * 1024 * 1024
 
@@ -459,12 +459,12 @@ extension Terminal {
         if base64Payload.isEmpty {
             return nil
         }
-        guard let decoded = decodeKittyBase64Payload(base64Payload), decoded.count <= Terminal.kittyMaxImageBytes else {
+        guard let decoded = decodeKittyBase64Payload(base64Payload), decoded.count <= kittyMaxImageBytes else {
             return nil
         }
 
         guard let rawData = decompressKittyData(decoded, compression: control.compression),
-              rawData.count <= Terminal.kittyMaxImageBytes else {
+              rawData.count <= kittyMaxImageBytes else {
             return nil
         }
 
@@ -646,7 +646,7 @@ extension Terminal {
     }
 
     private func decodeKittyPayloadData(control: KittyGraphicsControl, rawData: Data) -> KittyGraphicsPayload? {
-        guard rawData.count <= Terminal.kittyMaxImageBytes else {
+        guard rawData.count <= kittyMaxImageBytes else {
             return nil
         }
 
@@ -703,7 +703,7 @@ extension Terminal {
         guard compression == "z" else {
             return nil
         }
-        guard let inflated = decompressZlib(data), inflated.count <= Terminal.kittyMaxImageBytes else {
+        guard let inflated = decompressZlib(data), inflated.count <= kittyMaxImageBytes else {
             return nil
         }
         return inflated
@@ -721,7 +721,7 @@ extension Terminal {
             return false
         }
         let pixelCount = Int64(width) * Int64(height)
-        let limit = Int64(Terminal.kittyMaxImageBytes) / Int64(bytesPerPixel)
+        let limit = Int64(kittyMaxImageBytes) / Int64(bytesPerPixel)
         return pixelCount <= limit
     }
 
@@ -773,7 +773,7 @@ extension Terminal {
         }
 
         guard let rawData = decompressKittyData(data, compression: control.compression),
-              rawData.count <= Terminal.kittyMaxImageBytes else {
+              rawData.count <= kittyMaxImageBytes else {
             return (nil, "EINVAL: bad payload")
         }
         guard let payload = decodeKittyPayloadData(control: control, rawData: rawData) else {
@@ -809,7 +809,7 @@ extension Terminal {
             return (nil, "EINVAL: bad payload")
         }
         guard let rawData = decompressKittyData(data, compression: control.compression),
-              rawData.count <= Terminal.kittyMaxImageBytes else {
+              rawData.count <= kittyMaxImageBytes else {
             return (nil, "EINVAL: bad payload")
         }
         guard let payload = decodeKittyPayloadData(control: control, rawData: rawData) else {
@@ -896,7 +896,7 @@ extension Terminal {
         guard fileSize >= 0 else {
             return nil
         }
-        if fileSize > Int64(Terminal.kittyMaxImageBytes) {
+        if fileSize > Int64(kittyMaxImageBytes) {
             return nil
         }
         if Int64(offset) > fileSize {
@@ -920,7 +920,7 @@ extension Terminal {
             }
         }
 
-        let maxRead = size > 0 ? min(size, Terminal.kittyMaxImageBytes) : Terminal.kittyMaxImageBytes
+        let maxRead = size > 0 ? min(size, kittyMaxImageBytes) : kittyMaxImageBytes
         let remaining = min(Int64(maxRead), fileSize - Int64(offset))
         if remaining <= 0 {
             return Data()
@@ -976,7 +976,7 @@ extension Terminal {
         guard statSize > 0 else {
             return nil
         }
-        if statSize > Terminal.kittyMaxImageBytes {
+        if statSize > kittyMaxImageBytes {
             return nil
         }
         if let expectedSize, statSize < expectedSize {

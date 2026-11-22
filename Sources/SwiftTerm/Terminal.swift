@@ -9,6 +9,9 @@
 // TODO: audit every location to use restrictCursor
 
 import Foundation
+#if canImport(ImageIO)
+import ImageIO
+#endif
 
 /**
  * The terminal delegate is a protocol that must be implemented by a class
@@ -2852,7 +2855,10 @@ open class Terminal {
                 break
             }
             
-            guard let imgData = Data(base64Encoded: Data(data [colonIdx+1..<data.endIndex])) else {
+            let body = data [colonIdx+1..<data.endIndex]
+            guard body.count / 4 * 3 <= options.imageMaxBytes,
+                  let imgData = Data(base64Encoded: Data(body)),
+                  inlineImageFits(imgData) else {
                 return
             }
             let width = parseDimension (kv, key: "width")
@@ -2867,6 +2873,24 @@ open class Terminal {
         tdel?.iTermContent(source: self, content: data)
     }
     
+    /// An inline file whose decoded pixels would pass `imageMaxBytes` is dropped
+    /// before any view decodes it.
+    func inlineImageFits(_ data: Data) -> Bool {
+        #if canImport(ImageIO)
+        guard let source = CGImageSourceCreateWithData(data as CFData, nil),
+              let props = CGImageSourceCopyPropertiesAtIndex(source, 0, nil) as? [CFString: Any],
+              let width = props[kCGImagePropertyPixelWidth] as? Int,
+              let height = props[kCGImagePropertyPixelHeight] as? Int else {
+            return false
+        }
+        let (area, o1) = width.multipliedReportingOverflow(by: height)
+        let (bytes, o2) = area.multipliedReportingOverflow(by: 4)
+        return !o1 && !o2 && bytes <= options.imageMaxBytes
+        #else
+        return true
+        #endif
+    }
+
     // OSC 4
     func oscChangeOrQueryColorIndex (_ data: ArraySlice<UInt8>)
     {
