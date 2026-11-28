@@ -3039,7 +3039,23 @@ final class MetalTerminalRenderer: NSObject, MTKViewDelegate {
         }
     }
 
-    private static func makeLibrary(device: MTLDevice) throws -> MTLLibrary {
+    private static let libraryLock = NSLock()
+    nonisolated(unsafe) private static var libraries: [UInt64: MTLLibrary] = [:]
+
+    /// One shader library per device for the process: the lookup behind
+    /// it searches every loaded bundle and framework.
+    static func makeLibrary(device: MTLDevice) throws -> MTLLibrary {
+        libraryLock.lock()
+        defer { libraryLock.unlock() }
+        if let library = libraries[device.registryID] {
+            return library
+        }
+        let library = try loadLibrary(device: device)
+        libraries[device.registryID] = library
+        return library
+    }
+
+    private static func loadLibrary(device: MTLDevice) throws -> MTLLibrary {
         if let library = device.makeDefaultLibrary(),
            libraryHasRequiredFunctions(library) {
             return library
